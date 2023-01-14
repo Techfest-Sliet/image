@@ -6,7 +6,7 @@
   - Install libvips
     For ArchLinux,
     ```sh
-    pacman -S libvips
+    $ pacman -S libvips
     ```
 
     For Ubuntu, 
