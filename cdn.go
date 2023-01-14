@@ -21,7 +21,7 @@ import (
 func main() {
 	log.Println("Initializing the router!")
 	r := alien.New()
-	vips.Startup(&vips.Config{MaxCacheMem: (256 << 20)})
+	vips.Startup(&vips.Config{MaxCacheMem: (4 << 20)})
 	r.Post("/save", handleSave)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{message: \"Use /save or /get\"}"))
@@ -53,7 +53,7 @@ func handleSave(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{error: \"Failure while saving to file\", fullError: \"" + err.Error() + "\" }"))
 		log.Panicln(err)
 	}
-	w.Write([]byte("{uuid: \"" + imageId.String() + "\"message: \"Success\"}"))
+	w.Write([]byte("{uuid: \"" + imageId.String() + "\", message: \"Success\"}"))
 }
 
 func saveImage(data io.Reader, header *multipart.FileHeader, savePath string) (uuid.UUID, error) {
@@ -114,12 +114,12 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 			handleErr(w, http.StatusBadRequest, "Couldn't Resize Image", err)
 			return
 		}
-		imageData, _, err := image.ExportAvif(&vips.AvifExportParams{StripMetadata: true, Quality: 80, Speed: 2})
+		imageData, _, err := image.ExportWebp(&vips.WebpExportParams{Quality: 80, ReductionEffort: 2})
 		if err != nil {
 			handleErr(w, http.StatusInternalServerError, "Couldn't Encode Image", err)
 			return
 		}
-		w.Header().Set("Content-Type", "image/avif")
+		w.Header().Set("Content-Type", "image/webp")
 		w.Write(imageData)
 
 	}
@@ -132,4 +132,11 @@ func handleErr(w http.ResponseWriter, code int, message string, err error) {
 
 func isImage(header *multipart.FileHeader) bool {
 	return header.Header.Get("Content-Type")[0:6] == "image/"
+}
+
+func scale(x, y int, width, height float64) float64 {
+	if x > y {
+		return float64(x) / float64(width)
+	}
+	return float64(y) / float64(height)
 }
