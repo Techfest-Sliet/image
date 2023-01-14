@@ -47,37 +47,37 @@ func handleSave(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{error: \"Failure while allocating file\", fullError: \"" + err.Error() + "\" }"))
 		log.Panicln(err)
 	}
-	err = saveImage(imageData, imageHeader, SAVE_PATH)
+	imageId, err := saveImage(imageData, imageHeader, SAVE_PATH)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("{error: \"Failure while saving to file\", fullError: \"" + err.Error() + "\" }"))
 		log.Panicln(err)
 	}
-	w.Write([]byte("{message: \"Success\"}"))
+	w.Write([]byte("{uuid: \"" + imageId.String() + "\"message: \"Success\"}"))
 }
 
-func saveImage(data io.Reader, header *multipart.FileHeader, savePath string) error {
+func saveImage(data io.Reader, header *multipart.FileHeader, savePath string) (uuid.UUID, error) {
 	log.Println("Reading the file")
 	image, err := vips.NewImageFromReader(data)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	image.OptimizeICCProfile()
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	log.Println("Starting the export")
 	imageData, imageMeta, err := image.ExportAvif(&vips.AvifExportParams{StripMetadata: true, Quality: 90, Speed: 1})
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	log.Println("Writing the file")
-	err = ioutil.WriteFile(savePath+"Image-"+uuid.NewString()+imageMeta.Format.FileExt(), imageData, 0644)
+	imageId := uuid.New()
+	err = ioutil.WriteFile(savePath+"Image-"+imageId.String()+imageMeta.Format.FileExt(), imageData, 0644)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
-	uuid.NewString()
-	return nil
+	return imageId, nil
 }
 
 func handleGet(w http.ResponseWriter, r *http.Request) {
