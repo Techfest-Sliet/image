@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"flag"
 	"time"
 
 	//"github.com/qiniu/qmgo"
@@ -18,7 +19,12 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	port = flag.Int("port", 8080, "The port the webserver will listen on")
+)
+
 func main() {
+	flag.Parse()
 	log.Println("Initializing the router!")
 	r := alien.New()
 	vips.Startup(&vips.Config{MaxCacheMem: (4 << 20)})
@@ -28,7 +34,7 @@ func main() {
 	})
 	r.Get("/get", handleGet)
 	s := &http.Server{
-		Addr:           ":8080",
+		Addr:           ":" + strconv.Itoa(*port),
 		Handler:        r,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
