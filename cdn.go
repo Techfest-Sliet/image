@@ -76,7 +76,7 @@ func saveImage(data io.Reader, header *multipart.FileHeader, savePath string) (u
 		return uuid.Nil, err
 	}
 	log.Println("Starting the export")
-	imageData, imageMeta, err := image.ExportWebp(&vips.WebpExportParams{StripMetadata: true, Quality: 90})
+	imageData, imageMeta, err := image.ExportAvif(&vips.AvifExportParams{StripMetadata: true, Quality: 90, Speed: 6})
 	if err != nil {
 		return uuid.Nil, err
 	}
