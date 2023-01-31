@@ -102,7 +102,7 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 			handleErr(w, http.StatusBadRequest, "Invalid UUID", err)
 			return
 		}
-		imageName := SAVE_PATH + "Image-" + imageId.String() + ".webp"
+		imageName := SAVE_PATH + "Image-" + imageId.String() + ".avif"
 		image, err := vips.NewImageFromFile(imageName)
 		if err != nil {
 			handleErr(w, http.StatusInternalServerError, "Couldn't open file", err)
