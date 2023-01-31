@@ -11,12 +11,33 @@
 	* {
 		text-align: center;
 	}
+	body {
+		background-color: #282a36;
+		color: #f8f8f2;
+		font-size: 2em;
+	}
+	
+	input[type="file"] {
+		display: none;
+	}
+
+	input[type="submit"] {
+		border: solid;
+		border-color: #bd93f9;
+		border-width: 10;
+		background: #44475a;
+		color: #f8f8f2;
+		font-size: 2em;
+		border-radius: 20%;
+	}
 	</style>
 	<body>
 		<h1>Save an image</h1> <br>
 		<form action="/save" method="post" onsubmit="send(event,this)">
-			<label for="image">Image</label>
-			<input type="file" name="image" id="image"><br><br>
+			<label class="image" for="image">Click here for selecting the image
+				<input type="file" name="image" id="image">
+			</label>
+			<br><br>
 			<input type="submit" value="Submit">
 		</form>
 		<div class="beholder"></div>
