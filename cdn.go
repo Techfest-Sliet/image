@@ -2,16 +2,17 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
-	"flag"
 	"time"
 
 	//"github.com/qiniu/qmgo"
+	"html/template"
 	"mime/multipart"
 
 	"github.com/davidbyttow/govips/v2/vips"
@@ -29,10 +30,8 @@ func main() {
 	r := alien.New()
 	vips.Startup(&vips.Config{MaxCacheMem: (4 << 20)})
 	r.Post("/save", handleSave)
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("{message: \"Use /save or /get\"}"))
-	})
 	r.Get("/get", handleGet)
+	r.Get("/", handleForm)
 	s := &http.Server{
 		Addr:           ":" + strconv.Itoa(*port),
 		Handler:        r,
@@ -45,8 +44,12 @@ func main() {
 
 const SAVE_PATH = "images/"
 
+func handleForm(w http.ResponseWriter, r *http.Request) {
+	tmpl := template.Must(template.ParseFiles("template.html"))
+	tmpl.Execute(w, struct{ Success bool }{true})
+}
+
 func handleSave(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello"))
 	imageData, imageHeader, err := r.FormFile("image")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -59,7 +62,7 @@ func handleSave(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{error: \"Failure while saving to file\", fullError: \"" + err.Error() + "\" }"))
 		log.Panicln(err)
 	}
-	w.Write([]byte("{uuid: \"" + imageId.String() + "\", message: \"Success\"}"))
+	w.Write([]byte("{\"uuid\": \"" + imageId.String() + "\", \"message\": \"Success\"}"))
 }
 
 func saveImage(data io.Reader, header *multipart.FileHeader, savePath string) (uuid.UUID, error) {
@@ -73,7 +76,7 @@ func saveImage(data io.Reader, header *multipart.FileHeader, savePath string) (u
 		return uuid.Nil, err
 	}
 	log.Println("Starting the export")
-	imageData, imageMeta, err := image.ExportAvif(&vips.AvifExportParams{StripMetadata: true, Quality: 90, Speed: 1})
+	imageData, imageMeta, err := image.ExportAvif(&vips.AvifExportParams{StripMetadata: true, Quality: 80})
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -110,16 +113,17 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 			handleErr(w, http.StatusBadRequest, "Invalid width", err)
 			return
 		}
-		height, err := strconv.Atoi(q["height"][0])
+		//height, err := strconv.Atoi(q["height"][0])
 		if err != nil {
 			handleErr(w, http.StatusBadRequest, "Invalid height", err)
 			return
 		}
-		err = image.Thumbnail(width, height, vips.InterestingCentre)
+		err = image.Resize(float64(width) / float64(image.Width()), vips.KernelAuto)
 		if err != nil {
 			handleErr(w, http.StatusBadRequest, "Couldn't Resize Image", err)
 			return
 		}
+		fmt.Printf("SIZE: {X: %d, Y: %d}\nSCALE: %f\n", image.Width(), image.Height(),float64(width) / float64(image.Width()) )
 		imageData, _, err := image.ExportWebp(&vips.WebpExportParams{Quality: 80, ReductionEffort: 2})
 		if err != nil {
 			handleErr(w, http.StatusInternalServerError, "Couldn't Encode Image", err)
