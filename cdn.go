@@ -76,7 +76,7 @@ func saveImage(data io.Reader, header *multipart.FileHeader, savePath string) (u
 		return uuid.Nil, err
 	}
 	log.Println("Starting the export")
-	imageData, imageMeta, err := image.ExportAvif(&vips.AvifExportParams{StripMetadata: true, Quality: 80})
+	imageData, imageMeta, err := image.ExportWebp(&vips.WebpExportParams{StripMetadata: true, Quality: 90})
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -102,7 +102,7 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 			handleErr(w, http.StatusBadRequest, "Invalid UUID", err)
 			return
 		}
-		imageName := SAVE_PATH + "Image-" + imageId.String() + ".avif"
+		imageName := SAVE_PATH + "Image-" + imageId.String() + ".webp"
 		image, err := vips.NewImageFromFile(imageName)
 		if err != nil {
 			handleErr(w, http.StatusInternalServerError, "Couldn't open file", err)
