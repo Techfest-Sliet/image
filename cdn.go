@@ -28,7 +28,7 @@ func main() {
 	flag.Parse()
 	log.Println("Initializing the router!")
 	r := alien.New()
-	vips.Startup(&vips.Config{MaxCacheMem: (4 << 20)})
+	vips.Startup(&vips.Config{MaxCacheMem: (256 << 20)})
 	r.Post("/save", handleSave)
 	r.Get("/get", handleGet)
 	r.Get("/", handleForm)
@@ -37,7 +37,7 @@ func main() {
 		Handler:        r,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 10 << 20,
+		MaxHeaderBytes: 20 << 20,
 	}
 	log.Fatal(s.ListenAndServe())
 }
