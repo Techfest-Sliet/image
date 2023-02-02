@@ -5,7 +5,7 @@
 		</title>
 	</head>
 	<style>
-	h1, label, form {
+	h1, label, form, .beholder {
 		width: 100%;
 	}
 	* {
@@ -29,6 +29,15 @@
 		color: #f8f8f2;
 		font-size: 2em;
 		border-radius: 20%;
+	}
+	a {
+		text-decoration: none;
+		color: white;
+	}
+	.beholder {
+		display: grid;
+		gap: 5vw;
+		grid-template-columns: auto auto auto;
 	}
 	</style>
 	<body>
@@ -59,7 +68,7 @@
 			let img = new Image();
 			img.src = host + "/get?uuid=" + resp.uuid + "&width=300&height=300";
 			img_div.appendChild(img);
-			img_div.innerHTML += "<p>uuid: " + resp.uuid + "</p><br>" + "<a href=" + host + "/get?uuid=" + resp.uuid + "&width=300&height=300\">link</a>";
+			img_div.innerHTML += "<p>uuid: " + resp.uuid + "</p><br>" + "<a href=" + host + "/get?uuid=" + resp.uuid + "&width=300&height=300\">Link</a>";
 			holder.appendChild(img_div);
 
 		} );
