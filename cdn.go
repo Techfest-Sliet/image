@@ -35,8 +35,8 @@ func main() {
 	s := &http.Server{
 		Addr:           ":" + strconv.Itoa(*port),
 		Handler:        r,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		ReadTimeout:    100 * time.Second,
+		WriteTimeout:   100 * time.Second,
 		MaxHeaderBytes: 20 << 20,
 	}
 	log.Fatal(s.ListenAndServe())
