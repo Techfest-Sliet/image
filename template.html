@@ -55,7 +55,7 @@
 	</body>
 	<script>
 	let holder = document.getElementsByClassName("beholder")[0];
-	const host = "http://" + (new URL(window.location.href)).host;
+	const host = "https://" + (new URL(window.location.href)).host;
 	function send(e,form) {
 		fetch(form.action,{method:'post', body: new FormData(form)}).then( (response) => {
 			if (!response.ok) {
