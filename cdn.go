@@ -214,8 +214,19 @@ func isSVG(header *multipart.FileHeader) bool {
 }
 
 func scale(x, y, width, height int) float64 {
-	if x < y {
-		return float64(x) / float64(width)
+	return float64(max(x,y))/float64(min(width, height))
+}
+
+func max(x, y int) int {
+	if x > y {
+		return x
 	}
-	return float64(y) / float64(height)
+	return y
+}
+
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
 }
