@@ -121,10 +121,10 @@ func saveImage(data io.Reader, header *multipart.FileHeader, savePath string) (u
 
 func handleGet(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	requiredFields := []string{"uuid", "width", "height"}
-	for i := 0; i < len(requiredFields); i++ {
-		if !q.Has(requiredFields[i]) {
-			handleErr(w, http.StatusBadRequest, "Missing Fields", errors.New("Missing Fields: "+requiredFields[i]))
+	requiredFields := []string{"uuid"}
+	for _, e := range requiredFields {
+		if !q.Has(e) {
+			handleErr(w, http.StatusBadRequest, "Missing Fields", errors.New("Missing Fields: "+e))
 			return
 		}
 	}
@@ -144,14 +144,14 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		width, height := image.Width(), image.Height()
-		if len(q["width"]) > 0 {
+		if q.Has("width") && len(q["width"]) > 0 {
 			width, err = strconv.Atoi(q["width"][0])
 			if err != nil || width < 1 {
 				handleErr(w, http.StatusBadRequest, "Invalid width", err)
 				return
 			}
 		}
-		if len(q["height"]) > 0 {
+		if q.Has("height") && len(q["height"]) > 0 {
 			height, err = strconv.Atoi(q["height"][0])
 			if err != nil || height < 1 {
 				handleErr(w, http.StatusBadRequest, "Invalid height", err)
