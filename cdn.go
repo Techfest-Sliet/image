@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -51,18 +52,47 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 
 func handleSave(w http.ResponseWriter, r *http.Request) {
 	imageData, imageHeader, err := r.FormFile("image")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("{error: \"Failure while allocating file\", fullError: \"" + err.Error() + "\" }"))
-		log.Panicln(err)
+	w.Header().Set("Content-Type", "application/json")
+	if isImage(imageHeader) {
+		log.Println(imageHeader.Header.Get("Content-Type"))
+		log.Println(isSVG(imageHeader))
+		if isSVG(imageHeader) {
+			imageId, err := saveSVG(imageData, imageHeader, SAVE_PATH)
+			if err != nil {
+				handleErr(w, http.StatusInternalServerError, "Failure while saving to file", err)
+				log.Panicln(err)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte("{\"uuid\": \"" + imageId.String() + "\", \"message\": \"Success\"}"))
+			return
+		}
+		if err != nil {
+			handleErr(w, http.StatusInternalServerError, "Failure while allocating file", err)
+			log.Panicln(err)
+		}
+		imageId, err := saveImage(imageData, imageHeader, SAVE_PATH)
+		if err != nil {
+			handleErr(w, http.StatusInternalServerError, "Failure while saving to file", err)
+			log.Panicln(err)
+		}
+		w.Write([]byte("{\"uuid\": \"" + imageId.String() + "\", \"message\": \"Success\"}"))
+	} else {
+		handleErr(w, http.StatusBadRequest, "Is not an image", errors.New("The mimetype of the given file does not match image/*"))
 	}
-	imageId, err := saveImage(imageData, imageHeader, SAVE_PATH)
+}
+
+func saveSVG(data io.Reader, header *multipart.FileHeader, savePath string) (uuid.UUID, error) {
+	log.Println("Reading the file")
+	imageId := uuid.New()
+	svgFile, err := os.Create(savePath + "Image-" + imageId.String() + ".svg")
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("{error: \"Failure while saving to file\", fullError: \"" + err.Error() + "\" }"))
-		log.Panicln(err)
+		return uuid.Nil, err
 	}
-	w.Write([]byte("{\"uuid\": \"" + imageId.String() + "\", \"message\": \"Success\"}"))
+	_, err = io.Copy(svgFile, data)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return imageId, nil
 }
 
 func saveImage(data io.Reader, header *multipart.FileHeader, savePath string) (uuid.UUID, error) {
@@ -102,28 +132,43 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 			handleErr(w, http.StatusBadRequest, "Invalid UUID", err)
 			return
 		}
-		imageName := SAVE_PATH + "Image-" + imageId.String() + ".avif"
+		imageName := SAVE_PATH + "Image-" + imageId.String()
+
+		//if _, err := os.Stat(imageName + ".avif"); err == nil {
+		imageName += ".avif"
+		fmt.Println("AVIF File exists")
 		image, err := vips.NewImageFromFile(imageName)
 		if err != nil {
 			handleErr(w, http.StatusInternalServerError, "Couldn't open file", err)
 			return
 		}
-		width, err := strconv.Atoi(q["width"][0])
-		if err != nil {
-			handleErr(w, http.StatusBadRequest, "Invalid width", err)
-			return
+		width, height := image.Width(), image.Height()
+		if len(q["width"]) > 0 {
+			width, err = strconv.Atoi(q["width"][0])
+			if err != nil || width < 1 {
+				handleErr(w, http.StatusBadRequest, "Invalid width", err)
+				return
+			}
 		}
-		//height, err := strconv.Atoi(q["height"][0])
-		if err != nil {
-			handleErr(w, http.StatusBadRequest, "Invalid height", err)
-			return
+		if len(q["height"]) > 0 {
+			height, err = strconv.Atoi(q["height"][0])
+			if err != nil || height < 1 {
+				handleErr(w, http.StatusBadRequest, "Invalid height", err)
+				return
+			}
 		}
-		err = image.Resize(float64(width) / float64(image.Width()), vips.KernelAuto)
+		err = image.Resize(scale(width, height, image.Width(), image.Height()), vips.KernelAuto)
 		if err != nil {
 			handleErr(w, http.StatusBadRequest, "Couldn't Resize Image", err)
 			return
 		}
-		fmt.Printf("SIZE: {X: %d, Y: %d}\nSCALE: %f\n", image.Width(), image.Height(),float64(width) / float64(image.Width()) )
+		fmt.Printf("SIZE: {X: %d, Y: %d}\nSCALE: %f\n", image.Width(), image.Height(), float64(width)/float64(image.Width()))
+		err = image.ExtractArea((image.Width()-width)/2, (image.Height()-height)/2, width, height)
+		if err != nil {
+			handleErr(w, http.StatusBadRequest, "Couldn't Crop Image", err)
+			return
+		}
+		fmt.Printf("SIZE: {X: %d, Y: %d}\nSCALE: %f\n", image.Width(), image.Height(), float64(width)/float64(image.Width()))
 		imageData, _, err := image.ExportWebp(&vips.WebpExportParams{Quality: 80, ReductionEffort: 2})
 		if err != nil {
 			handleErr(w, http.StatusInternalServerError, "Couldn't Encode Image", err)
@@ -131,21 +176,45 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "image/webp")
 		w.Write(imageData)
+		/*
+				} else {
+					fmt.Printf("AVIF File does not exist\n")
+					if _, err := os.Stat(imageName + ".svg"); err == nil {
+						imageName += ".svg"
+						svgData, err := ioutil.ReadFile(imageName)
+						if err != nil {
+							handleErr(w, http.StatusInternalServerError, "Couldn't open file", err)
+							return
+						}
+						w.Header().Set("Content-Type", "image/svg+xml")
+						w.Write(svgData)
+						fmt.Printf("SVG File exists\n")
+					} else {
+						fmt.Printf("Image does not exist\n")
+						handleErr(w, http.StatusInternalServerError, "Couldn't open file", errors.New("Specified image does not exist"))
+						return
+					}
+		}*/
 
 	}
 }
 
 func handleErr(w http.ResponseWriter, code int, message string, err error) {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	w.Write([]byte(fmt.Sprintf("{error: [\"%s: %s\", \"%s\"]}", http.StatusText(code), message, err.Error())))
+	w.Write([]byte(fmt.Sprintf("{\"error\": [\"%s: %s\", \"%s\"]}", http.StatusText(code), message, err.Error())))
 }
 
 func isImage(header *multipart.FileHeader) bool {
 	return header.Header.Get("Content-Type")[0:6] == "image/"
 }
 
-func scale(x, y int, width, height float64) float64 {
-	if x > y {
+func isSVG(header *multipart.FileHeader) bool {
+	return header.Header.Get("Content-Type")[0:9] == "image/svg"
+}
+
+func scale(x, y, width, height int) float64 {
+	if x < y {
 		return float64(x) / float64(width)
 	}
 	return float64(y) / float64(height)
