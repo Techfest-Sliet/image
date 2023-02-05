@@ -127,14 +127,15 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 			handleErr(w, http.StatusBadRequest, "Missing Fields", errors.New("Missing Fields: "+requiredFields[i]))
 			return
 		}
-		imageId, err := uuid.Parse(q["uuid"][0])
-		if err != nil {
-			handleErr(w, http.StatusBadRequest, "Invalid UUID", err)
-			return
-		}
-		imageName := SAVE_PATH + "Image-" + imageId.String()
+	}
+	imageId, err := uuid.Parse(q["uuid"][0])
+	if err != nil {
+		handleErr(w, http.StatusBadRequest, "Invalid UUID", err)
+		return
+	}
+	imageName := SAVE_PATH + "Image-" + imageId.String()
 
-		//if _, err := os.Stat(imageName + ".avif"); err == nil {
+	if _, err := os.Stat(imageName + ".avif"); err == nil {
 		imageName += ".avif"
 		fmt.Println("AVIF File exists")
 		image, err := vips.NewImageFromFile(imageName)
@@ -169,34 +170,33 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Printf("SIZE: {X: %d, Y: %d}\nSCALE: %f\n", image.Width(), image.Height(), float64(width)/float64(image.Width()))
-		imageData, _, err := image.ExportWebp(&vips.WebpExportParams{Quality: 80, ReductionEffort: 2})
+		imageData, _, err := image.ExportNative()
 		if err != nil {
 			handleErr(w, http.StatusInternalServerError, "Couldn't Encode Image", err)
 			return
 		}
-		w.Header().Set("Content-Type", "image/webp")
+		w.Header().Set("Content-Type", "image/avif")
 		w.Write(imageData)
-		/*
-				} else {
-					fmt.Printf("AVIF File does not exist\n")
-					if _, err := os.Stat(imageName + ".svg"); err == nil {
-						imageName += ".svg"
-						svgData, err := ioutil.ReadFile(imageName)
-						if err != nil {
-							handleErr(w, http.StatusInternalServerError, "Couldn't open file", err)
-							return
-						}
-						w.Header().Set("Content-Type", "image/svg+xml")
-						w.Write(svgData)
-						fmt.Printf("SVG File exists\n")
-					} else {
-						fmt.Printf("Image does not exist\n")
-						handleErr(w, http.StatusInternalServerError, "Couldn't open file", errors.New("Specified image does not exist"))
-						return
-					}
-		}*/
 
+	} else {
+		fmt.Printf("AVIF File does not exist\n")
+		if _, err := os.Stat(imageName + ".svg"); err == nil {
+			imageName += ".svg"
+			svgData, err := ioutil.ReadFile(imageName)
+			if err != nil {
+				handleErr(w, http.StatusInternalServerError, "Couldn't open file", err)
+				return
+			}
+			w.Header().Set("Content-Type", "image/svg+xml")
+			w.Write(svgData)
+			fmt.Printf("SVG File exists\n")
+		} else {
+			fmt.Printf("Image does not exist\n")
+			handleErr(w, http.StatusInternalServerError, "Couldn't open file", errors.New("Specified image does not exist"))
+			return
+		}
 	}
+
 }
 
 func handleErr(w http.ResponseWriter, code int, message string, err error) {
@@ -214,7 +214,7 @@ func isSVG(header *multipart.FileHeader) bool {
 }
 
 func scale(x, y, width, height int) float64 {
-	return float64(max(x,y))/float64(min(width, height))
+	return float64(max(x, y)) / float64(min(width, height))
 }
 
 func max(x, y int) int {
