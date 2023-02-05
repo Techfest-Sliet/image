@@ -70,7 +70,7 @@
 			let img = new Image();
 			img.src = host + "/get?uuid=" + resp.uuid + "&width=300&height=300";
 			img_div.appendChild(img);
-			img_div.innerHTML += "<p>uuid: " + resp.uuid + "</p><br>" + "<a href=" + host + "/get?uuid=" + resp.uuid + "&width=300&height=300\">Link</a>";
+			img_div.innerHTML += "<p>uuid: " + resp.uuid + "</p><br>" + "<a href=" + host + "/get?uuid=" + resp.uuid + "&width=300&height=300>Link</a>";
 			holder.appendChild(img_div);
 
 		} );
